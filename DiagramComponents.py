@@ -133,6 +133,7 @@ class Solenoid(Component):
                                             outline='white')
         self.c.create_text(width / 2.0, height / 2.0, font=("Arial", 10, 'bold'), fill="white", text=str(num))
 
+        self.state = False #set state to false (off) by default
     def setIn(self, num):
         self.inlet = num
 
@@ -390,7 +391,8 @@ class CheckValve(Component):
     def setOut(self, num):
         self.outlet = num
 
-    def update(self):
+    def update(self): #TODO: breaks if connected to tank, fixed by making tank.getState() always return true
+        self.state = True #set state to true by default then check if flow in wrong direction
         neighbors = [self.top, self.right, self.bottom, self.left]
         if(neighbors[self.outlet - 1].getState() and not neighbors[self.inlet - 1].getState()):
             self.state = False
@@ -521,6 +523,9 @@ class Tank:
 
     def getWidget(self):
         return self.c
+    
+    def getState(self): #TODO: confirm if this is okay
+        return True
 
 
 
@@ -751,28 +756,28 @@ class PipeIntersect:
         self.bottomV = bottom
         self.leftV = left
 
-    def setState(self, fluid):
-        self.state = fluid
-        if (fluid):
-            self.c.itemconfig(self.f0, fill=self.fluidColor)
-            if (self.line1):
-                self.c.itemconfig(self.f1, fill=self.fluidColor)
-            if (self.line2):
-                self.c.itemconfig(self.f2, fill=self.fluidColor)
-            if (self.line3):
-                self.c.itemconfig(self.f3, fill=self.fluidColor)
-            if (self.line4):
-                self.c.itemconfig(self.f4, fill=self.fluidColor)
-        else:
-            self.c.itemconfig(self.f0, fill='black')
-            if (self.line1):
-                self.c.itemconfig(self.f1, fill='black')
-            if (self.line2):
-                self.c.itemconfig(self.f2, fill='black')
-            if (self.line3):
-                self.c.itemconfig(self.f3, fill='black')
-            if (self.line4):
-                self.c.itemconfig(self.f4, fill='black')
+    # def setState(self, fluid): #TODO Fix
+    #     self.state = fluid
+    #     if (fluid):
+    #         self.c.itemconfig(self.f0, fill=self.fluidColor)
+    #         if (self.line1):
+    #             self.c.itemconfig(self.f1, fill=self.fluidColor)
+    #         if (self.line2):
+    #             self.c.itemconfig(self.f2, fill=self.fluidColor)
+    #         if (self.line3):
+    #             self.c.itemconfig(self.f3, fill=self.fluidColor)
+    #         if (self.line4):
+    #             self.c.itemconfig(self.f4, fill=self.fluidColor)
+    #     else:
+    #         self.c.itemconfig(self.f0, fill='black')
+    #         if (self.line1):
+    #             self.c.itemconfig(self.f1, fill='black')
+    #         if (self.line2):
+    #             self.c.itemconfig(self.f2, fill='black')
+    #         if (self.line3):
+    #             self.c.itemconfig(self.f3, fill='black')
+    #         if (self.line4):
+    #             self.c.itemconfig(self.f4, fill='black')
 
     def getState(self):
         return self.state

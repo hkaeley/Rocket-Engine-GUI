@@ -10,6 +10,9 @@ from serial import SerialException
 import tkinter as tk
 from mttkinter import mtTkinter
 
+#flowsim
+import DiagramComponents
+import time
 
 # Custom Classes
 import Gauge
@@ -17,6 +20,8 @@ import RelaySwitch
 import PandID
 
 msg = ''
+
+FlowSim = 1
 
 
 # Returns list of all accessible serial ports
@@ -95,6 +100,7 @@ def actionHandler():
             #TEST SEQUENCE (DELETE ONCE STARTUP SEQ HAS BEEN DETERMINED)
             delay = 0.2
             delaySlider = 0.001
+            
             if(prevCon): # if Arduino is connected via serial
                 for i in range(2):
                     try:
@@ -142,10 +148,95 @@ def actionHandler():
 
 
 
+#TODO:
+# take into account PSI levels?
+#   how will these levels affect the rate of flow?
+# take into account relief valves eventually relieving pressure (we should see the gui actually relieve built up pressure if applicable)
+#   current implementation uses normal pipes to implement relief valves
+#   may have to create a new relief valve class for this
+# implement a flowsim button in the gui that let's you also pick what sim to run
 
+#for diff sims, we can have defined states for the different valves (ie OFF/ON)
+#   then run the bfs at whatever starting point(s)
+def flowsim(starting_points, plumbing, root):
+	q = [i for i in starting_points] #copy
+	visited = []
+	flowsim_bfs(q, visited, plumbing, root)
+	
+def flowsim_bfs(q, visited, plumbing, root):
+    x = q
+    time.sleep(0.025) #delay flow, can be adjusted based on pressure if we want
+    if len(q) == 0:
+        return
+    curr_visit = q.pop(0)
+    #handle repeated visit, no need to add neighbors again
+    if curr_visit in visited:
+        #only implemented for pipes
+        if type(curr_visit) == DiagramComponents.Pipe: #just change color of pipes
+            curr_visit.fluidColor = "#0000FF" #if visited twice, indicate merging of fluids with blue
+            curr_visit.setState(True)
+            root.update()
+            plumbing.getWindow().update()
+        flowsim_bfs(q, visited, plumbing, root)    
 
-
-
+    else:
+        #handle first visit
+        visited.append(curr_visit)
+        if type(curr_visit) == DiagramComponents.Solenoid:
+            if curr_visit.state == True: #open, should only be open if we open it
+                #if we reach through inlet, add outlet if not visited
+                if [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.outlet - 1] not in visited:
+                    q.append([curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.outlet - 1]) 
+                #or if we reached through outlet, add inlet if not visited 
+                if [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.inlet - 1] not in visited:
+                    q.append([curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.inlet - 1])                
+            else: #closed, make inlet/outlet (whichever we visited already) to indicate build up of pressure (purple). 
+                if type([curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.inlet - 1]) == DiagramComponents.Pipe and [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.inlet - 1] in visited: 
+                    [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.inlet - 1].fluidColor = "#BF40BF"
+                    [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.inlet - 1].setState(True) #assuming all inlets are pipes for now
+                    root.update()
+                    plumbing.getWindow().update()
+                if type([curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.outlet - 1]) == DiagramComponents.Pipe and [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.outlet - 1] in visited: 
+                    [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.outlet - 1].fluidColor = "#BF40BF"
+                    [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.outlet - 1].setState(True) #assuming all outlets are pipes for now
+                    root.update()
+                    plumbing.getWindow().update()
+        elif type(curr_visit) == DiagramComponents.CheckValve:
+            curr_visit.update()
+            if curr_visit.state == True: 
+                #cv state being true means that inlet has been visited, outlet has not ==> indicating correct flow of pressure (in -> out)
+                curr_visit.fluidColor = "#FF0000"
+                #just need to add outlet to q as assuming inlet has been visited
+                q.append([curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left][curr_visit.outlet - 1]) 
+            else: #check valve has reverse pressure
+                #   this can only really become an issue if you assess outlet before inlet, otherwise inlet will always be in the visited list.
+                curr_visit.fluidColor = "#FF0000" #turn valve red
+                root.update()
+                plumbing.getWindow().update()
+                #TODO: do some more error propogation, should we affect neighbors?
+        elif type(curr_visit) == DiagramComponents.PipeIntersect: #TODO delete once setState for intersects implemented
+            #change color and add neighbors
+            curr_visit.fluidColor = "#00FF00"
+            root.update()
+            plumbing.getWindow().update()
+            #add neighbors
+            for neighbor in [curr_visit.topH, curr_visit.rightH, curr_visit.bottomH, curr_visit.leftH, curr_visit.topV, curr_visit.rightV, curr_visit.bottomV, curr_visit.leftV]:
+                        if neighbor != None and neighbor not in visited:
+                            q.append(neighbor)  
+        elif type(curr_visit) == DiagramComponents.Pipe: 
+            #change color and add neighbors
+            curr_visit.setState(True)#fill and set state to true
+            root.update()
+            plumbing.getWindow().update()
+            for neighbor in [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left]:
+                if neighbor != None and neighbor not in visited:
+                    q.append(neighbor)  
+        else: #catch all for rest of components
+            #just add neighbors
+            for neighbor in [curr_visit.top, curr_visit.right, curr_visit.bottom, curr_visit.left]:
+                if neighbor != None and neighbor not in visited:
+                    q.append(neighbor)
+        flowsim_bfs(q, visited, plumbing, root)
 
 if __name__ == '__main__':
     global root, switch1, switch2, switch3, switch4, switch5, switch6, switch7, switch8, a, b, c, d, off, g1, g2, g3, g4, connectionLabel, plumbing, fileName, arduinoSwitchbox, prevCon
@@ -238,71 +329,94 @@ if __name__ == '__main__':
     h.pack()
 
 
+    def sim1():
+        #start this sim from the helium tanks and dewars
+        plumbing.one.setState(True) #turn on second solenoid
+        plumbing.two.setState(False)
+        plumbing.three.setState(True)
+        plumbing.four.setState(True)
+        plumbing.five.setState(True)
+        plumbing.six.setState(True)
+        plumbing.seven.setState(True)
+        plumbing.eight.setState(True)
+        plumbing.nine.setState(True)
+        plumbing.ten.setState(True)
+        plumbing.eleven.setState(True)
+        plumbing.twelve.setState(True)
+        plumbing.thirteen.setState(True)
+        plumbing.fourteen.setState(True)
+        flowsim([plumbing.he1, plumbing.he2, plumbing.he3, plumbing.n2, plumbing.lowDewar, plumbing.lngDewar], plumbing, root) 
+
     '''----------------------------
     ------ MAIN PROGRAM LOOP ------
     ----------------------------'''
-    prevCon = True
-    while True:
-        # ARDUINO CONNECTION CHECK
-        status = findArduino(getPorts())
-        if (status == "None"):
-            connectionLabel.configure(text='DISCONNECTED ' + status, fg="#ed3b3b")
-            g1.setText("Nan", "A0")
-            g2.setText("Nan", "A1")
-            g3.setText("Nan", "A2")
-            g4.setText("Nan", "A3")
-            prevCon = False
-        elif (not prevCon and status != 'None'):
-            try:
-                arduinoSwitchbox = serial.Serial(status.split()[0], 115200)
-                time.sleep(5)
+    if FlowSim: 
+        sim1()
+        #import pdb; pdb.set_trace()
+        import os; os._exit(0) #force closes program
+    else:
+        prevCon = True
+        while True:
+            # ARDUINO CONNECTION CHECK
+            status = findArduino(getPorts())
+            if (status == "None"):
+                connectionLabel.configure(text='DISCONNECTED ' + status, fg="#ed3b3b")
+                g1.setText("Nan", "A0")
+                g2.setText("Nan", "A1")
+                g3.setText("Nan", "A2")
+                g4.setText("Nan", "A3")
+                prevCon = False
+            elif (not prevCon and status != 'None'):
+                try:
+                    arduinoSwitchbox = serial.Serial(status.split()[0], 115200)
+                    time.sleep(5)
+                    connectionLabel.configure(text='CONNECTED ' + status, fg="#41d94d")
+                    switch1.setArduino(arduinoSwitchbox)
+                    switch2.setArduino(arduinoSwitchbox)
+                    switch3.setArduino(arduinoSwitchbox)
+                    switch4.setArduino(arduinoSwitchbox)
+                    switch5.setArduino(arduinoSwitchbox)
+                    switch6.setArduino(arduinoSwitchbox)
+                    prevCon = True
+                except SerialException:
+                    print("ERROR: LOADING...")
+            else:
                 connectionLabel.configure(text='CONNECTED ' + status, fg="#41d94d")
-                switch1.setArduino(arduinoSwitchbox)
-                switch2.setArduino(arduinoSwitchbox)
-                switch3.setArduino(arduinoSwitchbox)
-                switch4.setArduino(arduinoSwitchbox)
-                switch5.setArduino(arduinoSwitchbox)
-                switch6.setArduino(arduinoSwitchbox)
-                prevCon = True
-            except SerialException:
-                print("ERROR: LOADING...")
-        else:
-            connectionLabel.configure(text='CONNECTED ' + status, fg="#41d94d")
 
 
-        # Attempt to get data from Arduino
-        try:
-            strSerial = conv(str(arduinoSwitchbox.readline()))
-        except SerialException:
-            strSerial = ''#
-
-        data = strSerial.split("\\t")
-        vals = data[len(data) - 1].split(",")
-        print(vals)
-
-        if (data[0] == "Time"):
-            # detect serial data start
-            file = open(fileName, "a")
-            file.write(strSerial[0:len(strSerial) - 2] + "\n")
-            print('-------- BEGIN --------')
-            file.close()
-        elif (len(vals) > 9):
-            file = open(fileName, "a")
-            file.write((strSerial[0:len(strSerial) - 2] + "\n"))
-            file.close()
+            # Attempt to get data from Arduino
             try:
-                g1.setAngle(abs(5 * float(vals[39])) / 1023.0)
-                g1.setText(vals[9], "A0")
-                g2.setAngle(abs(5 * float(vals[40])) / 1023.0)
-                g2.setText(vals[10], "A1")
-                g3.setAngle(abs(5 * float(vals[41])) / 1023.0)
-                g3.setText(vals[11], "A2")
-                g4.setAngle(abs(5 * float(vals[42])) / 1023.0)
-                g4.setText(vals[12].replace('\n', ''), "A3")
-            except:
-                print("you got problems")
+                strSerial = conv(str(arduinoSwitchbox.readline()))
+            except SerialException:
+                strSerial = ''#
 
-        #plumbing.updatePipeStatus()
+            data = strSerial.split("\\t")
+            vals = data[len(data) - 1].split(",")
+            print(vals)
 
-        root.update()
-        plumbing.getWindow().update()
+            if (data[0] == "Time"):
+                # detect serial data start
+                file = open(fileName, "a")
+                file.write(strSerial[0:len(strSerial) - 2] + "\n")
+                print('-------- BEGIN --------')
+                file.close()
+            elif (len(vals) > 9):
+                file = open(fileName, "a")
+                file.write((strSerial[0:len(strSerial) - 2] + "\n"))
+                file.close()
+                try:
+                    g1.setAngle(abs(5 * float(vals[39])) / 1023.0)
+                    g1.setText(vals[9], "A0")
+                    g2.setAngle(abs(5 * float(vals[40])) / 1023.0)
+                    g2.setText(vals[10], "A1")
+                    g3.setAngle(abs(5 * float(vals[41])) / 1023.0)
+                    g3.setText(vals[11], "A2")
+                    g4.setAngle(abs(5 * float(vals[42])) / 1023.0)
+                    g4.setText(vals[12].replace('\n', ''), "A3")
+                except:
+                    print("you got problems")
+
+            #plumbing.updatePipeStatus()
+
+            root.update()
+            plumbing.getWindow().update()

@@ -159,6 +159,22 @@ class UCI_Liquid_Engine_Plumbing:
                                           False)
         self.p36 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, True, True, False, True, '#41d94d',
                                           False)
+
+        self.p37 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, False, True, False, False, '#41d94d',
+                                          False)
+        # self.p38 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, True, True, False, False, '#41d94d',
+        #                                   False)
+        self.p39 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, True, False, False, False, '#41d94d',
+                                          False)
+        self.p40 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, False, True, False, False, '#41d94d',
+                                          False)
+        self.p41 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, False, True, False, False, '#41d94d',
+                                          False)
+        self.p42 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, False, False, False, True, '#41d94d',
+                                          False)
+        self.p43 = DiagramComponents.Pipe(self.win, 'black', gridLen, gridLen, True, False, False, False, '#41d94d',
+                                          False)
+
         self.ip1 = DiagramComponents.PipeIntersect(self.win, 'black', gridLen, gridLen, '#41d94d', False, False)
 
         self.p1.getWidget().place(x=gridLen * 7, y=gridLen * 2)
@@ -198,6 +214,15 @@ class UCI_Liquid_Engine_Plumbing:
         self.p34.getWidget().place(x=gridLen * 9, y=gridLen * 14)
         self.p35.getWidget().place(x=gridLen * 10, y=gridLen * 14)
         self.p36.getWidget().place(x=gridLen * 11, y=gridLen * 14)
+
+        #added to simulate bleeds for solenoids
+        self.p37.getWidget().place(x=gridLen * 6, y=gridLen * 1)
+        #self.p38.getWidget().place(x=gridLen * 7, y=gridLen * 5)
+        self.p39.getWidget().place(x=gridLen * 10, y=gridLen * 5)
+        self.p40.getWidget().place(x=gridLen * 6, y=gridLen * 9)
+        self.p41.getWidget().place(x=gridLen * 5, y=gridLen * 10)
+        self.p42.getWidget().place(x=gridLen * 12, y=gridLen * 11)
+        self.p43.getWidget().place(x=gridLen * 6, y=gridLen * 14)
 
 
         # ALL CVs
@@ -253,9 +278,10 @@ class UCI_Liquid_Engine_Plumbing:
         #row1
         self.ps1.setNeighbors(None, None, self.p1, None)
         self.heCopv.setNeighbors(None, None, self.p2, None)
+        self.p37.setNeighbors(None, None, self.one, None)
         #row2
         self.ps2.setNeighbors(None, None, self.p7, None)
-        self.one.setNeighbors(None, self.p1, None, None)
+        self.one.setNeighbors(self.p37, self.p1, None, None)
         self.p1.setNeighbors(self.ps1, self.p2, None, self.one)
         self.p2.setNeighbors(self.heCopv, None, self.p8, self.p1)
         #row3
@@ -279,7 +305,7 @@ class UCI_Liquid_Engine_Plumbing:
         # thermocouple
         self.reg3.setNeighbors(self.p8, None, self.four, None)
         self.p11.setNeighbors(self.reg2, self.three, self.p12, None)
-        self.three.setNeighbors(None, None, None, self.p11)
+        self.three.setNeighbors(None, None, self.p39, self.p11)
         self.heFilter.setNeighbors(self.p10, None, self.p13, None)
         #row 5
         self.he1.setNeighbors(self.cv2, None, None, None)
@@ -290,6 +316,7 @@ class UCI_Liquid_Engine_Plumbing:
         self.p12.setNeighbors(self.p11, None, None, self.four)
         self.p13.setNeighbors(self.heFilter, self.p14, self.p18, None)
         self.p14.setNeighbors(None, None, self.reg4, self.p13)
+        self.p39.setNeighbors(self.three, None, None, None)
         #row 6
         self.p15.setNeighbors(None, self.p16, self.cv6, None)
         self.p16.setNeighbors(None, self.p17, None, self.p15)
@@ -298,24 +325,27 @@ class UCI_Liquid_Engine_Plumbing:
         self.reg4.setNeighbors(self.p14, None, self.p19, None)
         #row 7
         self.cv6.setNeighbors(self.p15, None, self.p20, None)
-        self.reg5.setNeighbors(self.p18, self.p19, None, None)
+        self.reg5.setNeighbors(self.p18, self.p19, self.cv7, None) #TODO: Confirm connecting reg5 to cv 7
         #row 8
         #rel valve not implemented yet
         self.p20.setNeighbors(self.cv6, self.ps3, self.p21, None)
         self.ps3.setNeighbors(None, None, None, self.p20)
-        self.cv7.setNeighbors(None, None, self.p22, None)
+        self.cv7.setNeighbors(self.reg5, None, self.p22, None) #TODO: Confirm connecting cv7 to reg 5
         #row 9
-        self.five.setNeighbors(None, self.p21, None, None)
+        self.five.setNeighbors(None, self.p21, None, self.p40)
         self.p21.setNeighbors(self.p20, None, self.loxProp, self.five)
         self.ps4.setNeighbors(None, self.p22, None, None)
         self.p22.setNeighbors(self.cv7, None, self.p23, self.ps4)
+        self.p40.setNeighbors(None, self.five, None, None)
         #rel valve not implemented yet
         #row 10
         self.lowDewar.setNeighbors(None, None, self.p24, None)
-        self.six.setNeighbors(None, None, self.p25, None)
+        self.six.setNeighbors(None, None, self.p25, self.p41)
         self.loxProp.setNeighbors(self.p21, None, self.p26, None)
         self.p23.setNeighbors(self.p22, self.seven, self.lngProp, None)
-        self.seven.setNeighbors(None, None, None, self.p23)
+        self.seven.setNeighbors(None, None, self.p42, self.p23)
+        self.p41.setNeighbors(None, self.six, None, None)
+        self.p42.setNeighbors(self.seven, None, None, None)
         #row 11
         self.p24.setNeighbors(self.lowDewar, self.reg6, None, None)
         self.reg6.setNeighbors(None, self.eight, None, self.p24)
@@ -340,7 +370,7 @@ class UCI_Liquid_Engine_Plumbing:
         self.p32.setNeighbors(self.lngProp, None, self.fourteen, self.eleven)
         #row 13
         self.lngDewar.setNeighbors(self.p27, None, None, None)
-        self.twelve.setNeighbors(self.p28, None, None, None)
+        self.twelve.setNeighbors(self.p28, None, self.p43, None)
         self.thirteen.setNeighbors(self.ip1, None, self.p33, None)
         self.fourteen.setNeighbors(self.p32, None, self.p36, None)
         #row 14
@@ -350,8 +380,57 @@ class UCI_Liquid_Engine_Plumbing:
         self.p35.setNeighbors(None, self.p36, None, self.p34)
         self.p36.setNeighbors(self.fourteen, self.ps6, None, self.p35)
         self.ps6.setNeighbors(None, None, None, self.p36)
+        self.p43.setNeighbors(self.twelve, None, None, None)
         #row 15 and 16
         self.n.setNeighbors(self.p34, None, None, None)
+
+        #set Solenoid inlets and outlets , 1 - top, 2 - right, 3 - down, 4 - left
+        self.one.setIn(2)
+        self.one.setOut(1)
+        self.two.setIn(4)
+        self.two.setOut(2)
+        self.three.setIn(4)
+        self.three.setOut(3)
+        self.four.setIn(1)
+        self.four.setOut(2)
+        self.five.setIn(2)
+        self.five.setOut(4)
+        self.six.setIn(3)
+        self.six.setOut(4)
+        self.seven.setIn(4)
+        self.seven.setOut(3)
+        self.eight.setIn(4)
+        self.eight.setOut(2)
+        self.nine.setIn(4) 
+        self.nine.setOut(2)
+        self.ten.setIn(4)
+        self.ten.setOut(2)
+        self.eleven.setIn(4) 
+        self.eleven.setOut(2)
+        self.twelve.setIn(1)
+        self.twelve.setOut(3)
+        self.thirteen.setIn(1) 
+        self.thirteen.setOut(3)
+        self.fourteen.setIn(1) 
+        self.fourteen.setOut(3)
+
+        #set CheckValve inlets and outlets
+        self.cv1.setIn(4) 
+        self.cv1.setOut(2)
+        self.cv2.setIn(3) 
+        self.cv2.setOut(1)
+        self.cv3.setIn(3) 
+        self.cv3.setOut(1)
+        self.cv4.setIn(3) 
+        self.cv4.setOut(1)
+        self.cv5.setIn(3) 
+        self.cv5.setOut(1)
+        self.cv6.setIn(1) 
+        self.cv6.setOut(3)
+        self.cv7.setIn(1) 
+        self.cv7.setOut(3)
+
+
 
     def defaultState(self):
         self.p1.setState(False)
